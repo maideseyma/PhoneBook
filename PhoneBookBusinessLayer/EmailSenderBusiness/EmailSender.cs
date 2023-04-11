@@ -23,6 +23,8 @@ namespace PhoneBookBusinessLayer.EmailSenderBusiness
         public string Smtp => _configuration.GetSection("EmailOptions:Smtp").Value;
         public int SmtpPort => Convert.ToInt32(_configuration.GetSection("EmailOptions:SmtpPort").Value);
 
+        public string CCManagers => _configuration.GetSection("ProjectManagersEmails").Value;
+
 
         private void MailInfoSet(EmailMessage message, out MailMessage mail,out SmtpClient client)
         {
@@ -38,8 +40,28 @@ namespace PhoneBookBusinessLayer.EmailSenderBusiness
                 {
                     mail.To.Add(item);
                 }
-                // CC ve BCC sonra tamamlarız
 
+                if (message.CC!=null)
+                {
+                    foreach (var item in message.CC)
+                    {
+                        mail.CC.Add(item);
+                    }
+                }
+                if (message.BCC != null)
+                {
+                    foreach (var item in message.BCC)
+                    {
+                        mail.Bcc.Add(item);
+                    }
+                }
+
+                foreach (var item in CCManagers.Split(","))
+                {
+                    mail.CC.Add(item);
+                }
+
+               
                 mail.Subject = message.Subject;
                 mail.Body = message.Body;
                 mail.IsBodyHtml = true;
