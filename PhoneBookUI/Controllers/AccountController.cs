@@ -1,8 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using PhoneBookBusinessLayer.EmailSenderBusiness;
 using PhoneBookBusinessLayer.InterfacesOfManagers;
 using PhoneBookEntityLayer.ViewModels;
 using PhoneBookUI.Models;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -41,14 +46,16 @@ namespace PhoneBookUI.Controllers
                 }
 
                 // Ekleme işlemleri yapılacak
-                //1 aynı emailden tekrar kayıt olamaz
-                //var isSameEmail = _memberManager.GetByConditions(x => x.Email.ToLower() == model.Email.ToLower()).Data;
-                //if (isSameEmail != null)
-                //{
-                //    ModelState.AddModelError("", "Dikkat bu kullanıcı sistemde zaten mevcuttur");
-                //    return View(model);
-                //}
 
+                //1) Aynı emailden tekrar kayıt olamaz! 
+                var isSameEmail = _memberManager.GetByConditions
+                    (x => x.Email.ToLower() == model.Email.ToLower()).Data;
+
+                if (isSameEmail != null)
+                {
+                    ModelState.AddModelError("", "Dikkat bu kullanıcı sistemde zaten mevcuttur!");
+                    return View(model);
+                }
                 MemberViewModel member = new MemberViewModel()
                 {
                     Email = model.Email,
@@ -59,31 +66,30 @@ namespace PhoneBookUI.Controllers
                     CreatedDate = DateTime.Now,
                     IsRemoved = false
                 };
+
                 member.PasswordHash = HashPasword(model.Password, out byte[] salt);
                 member.Salt = salt;
 
                 var result = _memberManager.Add(member);
                 if (result.IsSuccess)
                 {
-                    // hoşgeldiniz emaili gönderilecek
+                    // Hoşgeldiniz emaili gönderilecek
                     var email = new EmailMessage()
                     {
                         To = new string[] { member.Email },
                         Subject = $"503 Telefon Rehberi - HOŞGELDİNİZ!",
-                        // body içinde html yazılıyor
+                        //body içinde html yazılıyor
                         Body = $"<html lang='tr'><head></head><body>" +
-                    $"Merhaba Sayın {member.Name} {member.Surname}, <br/>" +
-                    $"Sisteme kaydınız gerçekleşmiştir. Başımz ağrıdı aktivasyona gerek yok. Direk sisteme giriş yapıp kullanabilirsiniz" +
-                    $"</body></html>"
-
+                        $"Merhaba Sayın {member.Name} {member.Surname},<br/>" +
+                        $"Sisteme kaydınız gerçekleşmiştir. Başımız ağrıdı aktivasyona gerek yok. Direk sisteme giriş yapıp kullanabilirsiniz." +
+                        $"</body></hmtl>"
                     };
-                    // sonra async ye çevirelim
+
+                    //sonra async'ye çevirelim
                     _emailSender.SendEmail(email);
 
-
                     // login sayfasına yönlendirilecek
-
-                    // buraya kaydınız gerçekleşti yazılacak
+                    TempData["RegisterSuccessMessage"] = $"{member.Name} {member.Surname} kaydınız gerçekleşti. Giriş yapabilirsiniz.";
 
                     return RedirectToAction("Login", "Account", new { email = model.Email });
                 }
@@ -91,13 +97,7 @@ namespace PhoneBookUI.Controllers
                 {
                     ModelState.AddModelError("", result.Message);
                     return View(model);
-
                 }
-
-
-
-
-
             }
             catch (Exception ex)
             {
@@ -107,22 +107,75 @@ namespace PhoneBookUI.Controllers
             }
         }
 
+
         [HttpGet]
-
-
         public IActionResult Login(string? email)
         {
             if (!string.IsNullOrEmpty(email))
-                {
+            {
                 LoginViewModel model = new LoginViewModel()
                 {
                     Email = email
                 };
                 return View(model);
-
             }
+
             return View(new LoginViewModel());
         }
+
+        [HttpPost]
+        public IActionResult Login(LoginViewModel model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    ViewBag.LoginErrorMsg = $"Gerekli alanları doldurunuz!";
+                    return View(model);
+                }
+
+                var user = _memberManager.GetById(model.Email).Data;
+                if (user == null)
+                {
+                    ViewBag.LoginErrorMsg = $"Kullanıcı adınız ya da şifrenizi doğru yazdığınızdan emin olunuz!";
+                    return View(model);
+
+                }
+                var passwordCompare = VerifyPassword(model.Password, user.PasswordHash, user.Salt);
+                if (passwordCompare)
+                {
+                    ViewBag.LoginErrorMsg = $"Kullanıcı adınız ya da şifrenizi doğru yazdığınızdan emin olunuz!";
+                    return View(model);
+                }
+                // giriş yapılacak
+                // bu kişinin bilgileri (email) oturum(session) cokkie olarak kayıt edeceğiz
+                var identity = new ClaimsIdentity(IdentityConstants.ApplicationScheme);
+                identity.AddClaim(new(ClaimTypes.Name, user.Email));
+                HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+
+                //ardından home index sayfasına yönlendireceğiz
+                return RedirectToAction("Index", "Home");
+                    
+               
+         
+            }
+            catch (Exception ex)
+            {
+                // ex loglanacak şu an development aşamadı olduğu için mesajını yazdırdık
+                ViewBag.LoginErrorMsg = $"Beklenmedik bir hata oluştu! {ex.Message}";
+                return View(model);
+            }
+
+        }
+
+        
+        [Authorize]
+        public IActionResult Logout()
+        {
+            HttpContext.SignOutAsync();
+            return RedirectToAction("Login", "Account");
+        }
+
 
         private string HashPasword(string password, out byte[] salt)
         {

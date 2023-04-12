@@ -1,4 +1,5 @@
 using AutoMapper.Extensions.ExpressionMapping;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using PhoneBookBusinessLayer.EmailSenderBusiness;
 using PhoneBookBusinessLayer.ImplementationsOfManagers;
@@ -17,9 +18,13 @@ builder.Services.AddDbContext<MyContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("Local"));
 });
+
+//CookieAuthentication ayarý eklendi
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie();
+
 builder.Services.AddAutoMapper(x =>
 {
-    //x.AddExpressionMapping();
+    x.AddExpressionMapping();
     x.AddProfile(typeof(Maps)); 
 
 });
@@ -30,7 +35,14 @@ builder.Services.AddControllersWithViews();
 //interfacelerin iþlerini gerçekleþtirecek classlarý burada yaþam döngülerini tanýmlamalýyýz.
 builder.Services.AddScoped<IMemberManager, MemberManager>();
 builder.Services.AddScoped<IMemberRepository, MemberRepository>();
+
 builder.Services.AddScoped<IEmailSender, EmailSender>();
+
+builder.Services.AddScoped<IPhoneTypeRepository, PhoneTypeRepository>();
+builder.Services.AddScoped<IphoneTypeManager, PhoneTypeManager>();
+
+builder.Services.AddScoped<IMemberPhoneRepository, MemberPhoneRepository>();
+builder.Services.AddScoped<IMemberPhoneManager, MemberPhoneManager>();
 
 var app = builder.Build();
 
@@ -43,6 +55,7 @@ app.UseStaticFiles(); // wwwroot klasörünü görmesi için
 
 app.UseRouting(); // browserdaki url için home/indexe gidebilmesi için
 
+app.UseAuthentication(); // login ve logout iþlemleriniz için
 app.UseAuthorization(); // yetkilendirme için
 
 app.MapControllerRoute(
