@@ -27,11 +27,20 @@
                 required />
             </div> <br />
 
-            <div class="form-group">
+            <div class="form-group row">
                 <label>Telefon:</label>
-                <input type="text" class="form-control"  asp-for="Phone"
-                required />
+                <div class="col-3"> <select class="form-control" asp-for="CountryCode">
+                  
+                        <option value="+90">+90 TÜRKİYE</option>
+                        <option value="+01">+01 AMERİKA</option>
+                        <option value="+44">+44 İNGİLTERE</option>
+                    </select>
+                </div>
+                <div class="col-9">
 
+                    <input type="text" class="form-control" asp-for="Phone"
+                           required />
+                </div>
             </div> <br />
 
             <div class="form-group">

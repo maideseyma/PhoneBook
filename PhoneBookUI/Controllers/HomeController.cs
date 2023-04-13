@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ActionConstraints;
+using Microsoft.Identity.Client;
 using NuGet.Common;
 using PhoneBookBusinessLayer.ImplementationsOfManagers;
 using PhoneBookBusinessLayer.InterfacesOfManagers;
@@ -26,6 +28,15 @@ namespace PhoneBookUI.Controllers
 
         public IActionResult Index()
         {
+            //Eğer giriş yapmış ise giriş yapan kullanıcının rehberini model olarak sayfaya gönderelim
+            if (HttpContext.User.Identity?.Name != null)
+            {
+                var userEmail = HttpContext.User.Identity?.Name;
+                var data = _memberPhoneManager.GetAll(x =>
+                x.MemberId == userEmail).Data;
+                return View(data);
+            }
+
             return View();
         }
 
@@ -89,6 +100,7 @@ namespace PhoneBookUI.Controllers
                 //Diğer seçeneğinin senaryosunu yarın yazacağız.
                 model.CreatedDate = DateTime.Now;
                 model.IsRemoved = false;
+                model.Phone = model.CountryCode + model.Phone;
 
                 if (!_memberPhoneManager.Add(model).IsSuccess)
                 {
@@ -106,5 +118,114 @@ namespace PhoneBookUI.Controllers
             }
         }
 
+
+
+        [Authorize]
+        public IActionResult DeletePhone(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    TempData["DeleteFailedMsg"] = $"id değeri düzgün değil!";
+                    return RedirectToAction("Index", "Home");
+                }
+                var phone = _memberPhoneManager.GetById(id).Data;
+                if (phone == null)
+                {
+                    TempData["DeleteFailedMsg"] = $"Kayıt bulunamadığı için silme başarısızdır!";
+                    return RedirectToAction("Index", "Home");
+                }
+                if (!_memberPhoneManager.Delete(phone).IsSuccess)
+                {
+                    TempData["DeleteFailedMsg"] = $"Silme başarısızdır!";
+                    return RedirectToAction("Index", "Home");
+                }
+
+                TempData["DeleteSuccessMsg"] = $"Telefon rehberden silindi";
+                return RedirectToAction("Index", "Home");
+
+            }
+            catch (Exception ex)
+            {
+                TempData["DeleteFailedMsg"] = $"Beklenmedik bir hata oldu! {ex.Message}";
+                return RedirectToAction("Index", "Home");
+            }
+        }
+
+
+        [HttpPost]
+        public JsonResult PhoneDelete([FromBody] int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return Json(new { isSuccess = false, message = $"id değeri düzgün değil" });
+                }
+                var phone = _memberPhoneManager.GetById(id).Data;
+                if (phone == null)
+                {
+                    return Json(new { isSuccess = false, message = $"Kayıt bulunamadığı için silme başarısızdır!" });
+                }
+                //hard delete
+                if (!_memberPhoneManager.Delete(phone).IsSuccess)
+                {
+                    return Json(new { isSuccess = false, message = $"Silme başarısızdır!" });
+                }
+                var userEmail = HttpContext.User.Identity?.Name;
+                var data = _memberPhoneManager.GetAll(x => x.MemberId == userEmail).Data;
+
+                return Json(new { isSuccess = true, message = $"Telefon rehberden silindi!", phones=data});
+
+            }
+            catch (Exception ex)
+            {
+                return Json(new { isSuccess = false, message = $"Beklenmedik bir hata oluştu! {ex.Message}" });
+            }
+
+          
+
+            
+        }
+        [HttpGet]
+        [Authorize]
+        public IActionResult EditPhone(int id)
+        {
+            try
+            {
+                // zaman azaldığı için buraya if yazıp idyi kontrol etmedim
+                var phone = _memberPhoneManager.GetById(id).Data;
+                return View(phone);
+
+            }
+            catch (Exception ex)
+            {
+
+                ModelState.AddModelError("", "Beklenmedik hata" + ex.Message);
+                return View();
+            }
+        }
+
+        [HttpPost]
+        [Authorize]
+        public IActionResult EditPhone(MemberPhoneViewModel model)
+        {
+            try
+            {
+                var phone = _memberPhoneManager.GetById(model.Id).Data;
+                phone.Phone = model.Phone;
+                phone.FriendNameSurname = model.FriendNameSurname;
+
+                _memberPhoneManager.Update(phone);
+                return RedirectToAction("Index", "Home");
+            }
+            catch (Exception ex)
+            {
+
+                ModelState.AddModelError("", "Beklenmedik hata" + ex.Message);
+                return View();
+            }
+        }
     }
 }
