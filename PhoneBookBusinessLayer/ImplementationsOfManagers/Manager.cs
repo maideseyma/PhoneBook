@@ -32,9 +32,10 @@ namespace PhoneBookBusinessLayer.ImplementationsOfManagers
                 TModel tmodel = _mapper.Map<TViewModel, TModel>(model);
                 int result = _repo.Add(tmodel); // tmodel repo ile veritabanına eklendi t modelin artık idsi var
 
-                TViewModel dataModel = _mapper.Map<TModel, TViewModel>(tmodel);
-                return result > 0 ? new DataResult<TViewModel>(success: true, message: "Ekleme işlemi başarılıdır", data: model) :
-                    new DataResult<TViewModel>(model, "Ekleme işlemi BŞARISIZDIR!", false);
+                TViewModel datamodel = _mapper.Map<TModel, TViewModel>(tmodel);
+
+                return result > 0 ? new DataResult<TViewModel>(success: true, message: "Ekleme işlemi başarılıdır!",
+                    data: datamodel) : new DataResult<TViewModel>(model, "Ekleme BAŞARISIZ!!", false);
             }
             catch (Exception)
             {
