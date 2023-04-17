@@ -59,8 +59,14 @@ app.UseRouting(); // browserdaki url için home/indexe gidebilmesi için
 app.UseAuthentication(); // login ve logout iþlemleriniz için
 app.UseAuthorization(); // yetkilendirme için
 
+
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Home}/{action=Dashboard}/{id?}"
+    ); // area route pattern
+
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}"); // routedefault pattern vermek için
+    pattern: "{controller=Home}/{action=Index}/{id?}"); // route default pattern vermek için
 
 app.Run(); // uygulamayý çalýþtýrýr
