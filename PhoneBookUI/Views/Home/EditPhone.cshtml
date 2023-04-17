@@ -12,13 +12,13 @@
         <hr />
         <form asp-action="EditPhone" method="post">
             <div asp-validation-summary="All" class="text-danger"></div>
-          
+
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="CreatedDate" />
             <input type="hidden" asp-for="MemberId" />
             <input type="hidden" asp-for="IsRemoved" />
 
-           
+
             <div class="form-group">
                 <label asp-for="FriendNameSurname" class="control-label"></label>
                 <input asp-for="FriendNameSurname" class="form-control" />
@@ -29,9 +29,9 @@
                 <select class="form-control" asp-for="PhoneTypeId">
                     @foreach (PhoneTypeViewModel item in ViewBag.PhoneTypes)
                     {
-                        <option value="@item.Id">@item.Name</option>
+                            <option value="@item.Id">@item.Name</option>
                     }
-                
+
                 </select>
             </div>
 
@@ -50,7 +50,7 @@
                            required />
                 </div>
             </div> <br />
-           
+
             <div class="form-group">
                 <input type="submit" value="GÜNCELLE" class="btn btn-primary" />
             </div>
